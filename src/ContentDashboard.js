@@ -5,7 +5,6 @@ const ContentDashboard = () => {
   const [data, setData] = useState([]);
   const [kpis, setKpis] = useState({});
   const [upcomingContent, setUpcomingContent] = useState([]);
-  const [pilarData, setPilarData] = useState([]);
   const [tipoData, setTipoData] = useState([]);
   const [canalData, setCanalData] = useState([]);
   const [backlogData, setBacklogData] = useState([]);
@@ -14,26 +13,15 @@ const ContentDashboard = () => {
 
   const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvCPmM9GlwcFAjaG9Hoh2P1XUWnjd55riEvx_lK-A6juYXtE7SUHvvx9NnzGP0NVfujkrUDirCzB4g/pub?gid=198017202&single=true&output=csv";
 
-  const funnelMapping = {
-    "Planejado": "Pré-produção",
-    "Roteiro": "Produção",
-    "Para gravar": "Produção",
-    "Editando": "Produção",
-    "Revisão": "Qualidade",
-    "Aguardando aprovação": "Qualidade",
-    "Programado": "Publicação",
-    "Postado": "Publicação"
+  const statusEnum = {
+    "Planejado": "Planejado",
+    "Para gravar": "Para gravar", 
+    "Editando": "Editando",
+    "Aguardando aprovação": "Aguardando aprovação",
+    "Para programar": "Para programar",
+    "Postado": "Postado"
   };
 
-  const pilarKeywords = {
-    'Palavra Vivida': ['palavra', 'evangelho', 'bíblia', 'escritura', 'homilia', 'reflexão'],
-    'Verdade que Liberta': ['verdade', 'liberta', 'conhecimento', 'ensino', 'doutrina'],
-    'Fé com Obras': ['obras', 'ação', 'caridade', 'solidariedade', 'serviço'],
-    'Espiritualidade Encarnada': ['oração', 'contemplação', 'espiritual', 'meditação'],
-    'Santos e Exemplos': ['santo', 'santa', 'exemplo', 'testemunho', 'vida'],
-    'Direção Pastoral': ['pastoral', 'direção', 'orientação', 'aconselhamento'],
-    'Comunhão e Serviço': ['comunidade', 'comunhão', 'união', 'fraternidade']
-  };
 
   const tipoMapping = {
     'C': 'Card/Carrossel',
@@ -78,17 +66,6 @@ const ContentDashboard = () => {
     return isNaN(date.getTime()) ? null : date;
   };
 
-  const inferPilar = (tema, conteudo) => {
-    const text = `${tema} ${conteudo}`.toLowerCase();
-    
-    for (const [pilar, keywords] of Object.entries(pilarKeywords)) {
-      if (keywords.some(keyword => text.includes(keyword))) {
-        return pilar;
-      }
-    }
-    
-    return 'Outros';
-  };
 
   const processData = (rawData) => {
     const today = new Date();
@@ -104,11 +81,6 @@ const ContentDashboard = () => {
         tipo = tipoMapping[tipo];
       }
       
-      // Inferir Pilar se não estiver preenchido
-      let pilar = row.Pilar;
-      if (!pilar || pilar.trim() === '') {
-        pilar = inferPilar(row.Tema || '', row.Conteúdo || '');
-      }
       
       // Criar ID estável
       const dateStr = data ? data.toISOString().slice(0, 10).replace(/-/g, '') : 'NODATE';
@@ -124,15 +96,14 @@ const ContentDashboard = () => {
         Data: data,
         'Prazo para aprovação': prazoAprovacao,
         Tipo: tipo,
-        Pilar: pilar,
-        Etapa: funnelMapping[row.Status] || 'N/A',
+        Status: statusEnum[row.Status] || row.Status,
         Atrasado: prazoAprovacao && 
                   prazoAprovacao < today && 
-                  !['Programado', 'Postado'].includes(row.Status),
+                  !['Para programar', 'Postado'].includes(row.Status),
         semana_iso: data ? getWeekNumber(data) : null,
         dia_da_semana: data ? data.getDay() || 7 : null // 1=Seg, 7=Dom
       };
-    }).filter(row => row.Data || row['Prazo para aprovação']);
+    }); // Remover filtro para manter todos os 93 registros
 
     return processedData;
   };
@@ -180,14 +151,14 @@ const ContentDashboard = () => {
       .slice(0, missingDaysForMeta)
       .map(d => d.toLocaleDateString('pt-BR'));
     
-    const totalPlanned = processedData.length;
+    const totalPlanned = processedData.length; // Agora será 93
     const totalPosted = processedData.filter(row => row.Status === 'Postado').length;
     const overdue = processedData.filter(row => row.Atrasado).length;
     
     return {
       total_planejado: totalPlanned,
       total_postado: totalPosted,
-      taxa_conclusao: Math.round((totalPosted / totalPlanned) * 100 * 10) / 10,
+      taxa_conclusao: Math.round((totalPosted / totalPlanned) * 100 * 10) / 10, // 9 de 93 = 9.7%
       conteudos_atrasados: overdue,
       buffer_meta_dias: metaBufferDays,
       buffer_dias_cobertos: coveredDays,
@@ -230,26 +201,6 @@ const ContentDashboard = () => {
       .sort((a, b) => a.Data - b.Data);
   };
 
-  const calculatePilarData = (processedData) => {
-    const pilarStats = {};
-    
-    processedData.forEach(row => {
-      const pilar = row.Pilar || 'Outros';
-      if (!pilarStats[pilar]) {
-        pilarStats[pilar] = { planejado: 0, postado: 0 };
-      }
-      pilarStats[pilar].planejado++;
-      if (row.Status === 'Postado') {
-        pilarStats[pilar].postado++;
-      }
-    });
-    
-    return Object.entries(pilarStats).map(([pilar, stats]) => ({
-      pilar,
-      ...stats,
-      percentual: Math.round((stats.postado / stats.planejado) * 100 * 10) / 10
-    }));
-  };
   
   const calculateTipoData = (processedData) => {
     const tipoStats = {};
@@ -305,7 +256,6 @@ const ContentDashboard = () => {
         setData(processedData);
         setKpis(calculateKPIs(processedData));
         setUpcomingContent(getUpcomingContent(processedData));
-        setPilarData(calculatePilarData(processedData));
         setTipoData(calculateTipoData(processedData));
         setCanalData(calculateCanalData(processedData));
         setBacklogData(processedData.filter(row => row.Atrasado));
@@ -321,12 +271,14 @@ const ContentDashboard = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      'Pré-produção': '#ffc107',
-      'Produção': '#fd7e14',
-      'Qualidade': '#20c997',
-      'Publicação': '#0d6efd'
+      'Planejado': '#6c757d',
+      'Para gravar': '#ffc107',
+      'Editando': '#fd7e14',
+      'Aguardando aprovação': '#20c997',
+      'Para programar': '#0d6efd',
+      'Postado': '#28a745'
     };
-    return colors[funnelMapping[status]] || '#6c757d';
+    return colors[status] || '#6c757d';
   };
 
   if (loading) {
@@ -405,33 +357,6 @@ const ContentDashboard = () => {
     </>
   );
 
-  const renderPilares = () => (
-    <div className="pilares-section">
-      <h2>Análise por Pilares</h2>
-      <div className="table-container">
-        <table className="stats-table">
-          <thead>
-            <tr>
-              <th>Pilar</th>
-              <th>Planejado</th>
-              <th>Postado</th>
-              <th>% Realizado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pilarData.map((item, index) => (
-              <tr key={index}>
-                <td className="pillar-name">{item.pilar}</td>
-                <td>{item.planejado}</td>
-                <td>{item.postado}</td>
-                <td className="percentage">{item.percentual}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   const renderTipo = () => (
     <div className="tipo-section">
@@ -502,7 +427,7 @@ const ContentDashboard = () => {
                 <th>Tipo</th>
                 <th>Tema</th>
                 <th>Status</th>
-                <th>Etapa</th>
+                <th>Status</th>
                 <th>Responsável</th>
               </tr>
             </thead>
@@ -522,7 +447,7 @@ const ContentDashboard = () => {
                         {item.Status}
                       </span>
                     </td>
-                    <td>{item.Etapa}</td>
+                    <td>{item.Status}</td>
                     <td>{item.Responsável || '-'}</td>
                   </tr>
                 ))
@@ -589,7 +514,6 @@ const ContentDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'pilares': return renderPilares();
       case 'tipo': return renderTipo();
       case 'canal': return renderCanal();
       case 'operacional': return renderOperacional();
@@ -613,12 +537,6 @@ const ContentDashboard = () => {
           onClick={() => setActiveTab('visao-geral')}
         >
           Visão Geral
-        </button>
-        <button 
-          className={`nav-tab ${activeTab === 'pilares' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pilares')}
-        >
-          Pilares
         </button>
         <button 
           className={`nav-tab ${activeTab === 'tipo' ? 'active' : ''}`}
