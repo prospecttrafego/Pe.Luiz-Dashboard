@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/Pe.Luiz-Dashboard/static/css/main.f42b71ae.css",
-    "main.js": "/Pe.Luiz-Dashboard/static/js/main.d8f3ee37.js",
+    "main.css": "/Pe.Luiz-Dashboard/static/css/main.b151edbd.css",
+    "main.js": "/Pe.Luiz-Dashboard/static/js/main.478d1e9c.js",
     "index.html": "/Pe.Luiz-Dashboard/index.html",
-    "main.f42b71ae.css.map": "/Pe.Luiz-Dashboard/static/css/main.f42b71ae.css.map",
-    "main.d8f3ee37.js.map": "/Pe.Luiz-Dashboard/static/js/main.d8f3ee37.js.map"
+    "main.b151edbd.css.map": "/Pe.Luiz-Dashboard/static/css/main.b151edbd.css.map",
+    "main.478d1e9c.js.map": "/Pe.Luiz-Dashboard/static/js/main.478d1e9c.js.map"
   },
   "entrypoints": [
-    "static/css/main.f42b71ae.css",
-    "static/js/main.d8f3ee37.js"
+    "static/css/main.b151edbd.css",
+    "static/js/main.478d1e9c.js"
   ]
 }
